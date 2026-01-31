@@ -1,203 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trophy Collector Pro</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trophy Collector Pro - Demo Mode</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --accent-blue: #0071e3;
+            --win-spider: #ffcc00;
+        }
 
-<style>
-:root{
-    --bg:#f5f5f7;
-    --accent:#0071e3;
-    --win:#ffcc00;
-}
-body{
-    margin:0;height:100vh;display:flex;justify-content:center;align-items:center;
-    font-family:-apple-system,sans-serif;background:var(--bg);
-}
-body.puzzle-mode{background:#111;}
-body.won{background:#fff9e6;}
+        body {
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            height: 100vh; margin: 0; font-family: -apple-system, sans-serif;
+            background-color: var(--bg-color); overflow: hidden; perspective: 1000px;
+        }
 
-#trophy-shelf{
-    position:fixed;top:0;width:100%;height:80px;
-    display:flex;gap:20px;align-items:center;padding:0 20px;
-    background:white;border-bottom:3px solid var(--win);
-    transform:translateY(-100%);transition:.4s;z-index:10;
-}
-body.has-trophies #trophy-shelf{transform:translateY(0);}
-.mini-trophy-item{
-    width:45px;height:45px;border-radius:8px;
-    border:2px solid gold;background-size:cover;
-    box-shadow:0 0 15px gold;
-}
+        /* Demo UI Elements */
+        .demo-container { position: relative; width: 300px; height: 300px; }
 
-.main{
-    display:flex;flex-direction:column;gap:20px;align-items:center;
-}
+        #countdown {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 80px; font-weight: 800; color: white; text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 50; pointer-events: none; opacity: 0;
+        }
 
-.upload-box{
-    width:300px;height:300px;border-radius:24px;
-    background:white;display:flex;align-items:center;justify-content:center;
-    box-shadow:0 10px 30px rgba(0,0,0,.1);
-    cursor:pointer;transition:.3s;position:relative;
-}
-.upload-box.drag{
-    outline:4px dashed var(--accent);
-    transform:scale(1.04);
-}
-.box-ui{
-    width:100%;height:100%;border-radius:24px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background-size:cover;background-position:center;
-    color:#888;font-weight:600;
-}
+        .upload-box {
+            width: 300px; height: 300px; background-color: white; border-radius: 24px;
+            display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+            overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
 
-.piece{
-    width:100px;height:100px;
-    float:left;background-size:300px 300px;
-    display:none;
-}
-body.puzzle-mode .piece{display:block;}
-body.puzzle-mode .box-ui{display:none;}
+        .box-content {
+            grid-column: 1 / span 3; grid-row: 1 / span 3;
+            background-image: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=300&h=300&fit=crop'); /* Sample Image */
+            background-size: cover;
+        }
 
-button{
-    padding:12px 28px;border:none;border-radius:999px;
-    font-weight:600;cursor:pointer;
-    background:var(--accent);color:white;
-}
-#saveBtn{display:none;background:var(--win);}
+        .puzzle-piece { 
+            background-size: 300px 300px; border: 0.2px solid rgba(255,255,255,0.2);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-input{display:none;}
-</style>
+        /* The Ghost Cube Cursor */
+        #ghost-cube {
+            position: absolute; width: 40px; height: 40px;
+            top: -50px; left: -50px; transform-style: preserve-3d;
+            z-index: 60; transition: all 0.5s ease-in-out; pointer-events: none;
+        }
+        .cube-face {
+            position: absolute; width: 40px; height: 40px;
+            background: rgba(0, 113, 227, 0.8); border: 1px solid white;
+        }
+        .f1 { transform: rotateY(0deg) translateZ(20px); }
+        .f2 { transform: rotateY(90deg) translateZ(20px); }
+        .f3 { transform: rotateX(90deg) translateZ(20px); }
+
+        /* Buttons */
+        .apple-btn {
+            margin-top: 30px; padding: 12px 24px; background: black; color: white;
+            border-radius: 20px; border: none; font-weight: 600; cursor: pointer;
+            transition: 0.3s;
+        }
+        .apple-btn:hover { transform: scale(1.05); }
+
+        .confetti { position: absolute; width: 8px; height: 8px; z-index: 100; animation: fall 2s forwards; }
+        @keyframes fall { to { transform: translateY(200px) rotate(360deg); opacity: 0; } }
+    </style>
 </head>
-
 <body>
 
-<div id="trophy-shelf"></div>
+    <div class="demo-container">
+        <div id="countdown">3</div>
+        
+        <div id="ghost-cube">
+            <div class="cube-face f1"></div>
+            <div class="cube-face f2"></div>
+            <div class="cube-face f3"></div>
+        </div>
 
-<div class="main">
-    <div class="upload-box" id="dropZone">
-        <div class="box-ui" id="boxUI">
-            <div style="font-size:48px">＋</div>
-            <div>drop or click image</div>
+        <div class="upload-box" id="game-box">
+            <div class="box-content" id="box-img"></div>
         </div>
     </div>
 
-    <button onclick="togglePuzzle()">Split Image</button>
-    <button onclick="startGame()">Play</button>
-    <button id="saveBtn" onclick="saveTrophy()">Save Trophy</button>
-</div>
+    <button class="apple-btn" onclick="startDemo()">Watch How to Play</button>
 
-<input type="file" id="fileInput" accept="image/*">
+    <script>
+        const gameBox = document.getElementById('game-box');
+        const ghost = document.getElementById('ghost-cube');
+        const countEl = document.getElementById('countdown');
+        let pieces = [];
+        let solution = [];
 
-<script>
-let solution=[],currentImg="";
+        async function startDemo() {
+            // 1. Orbit the cube around the box
+            ghost.style.top = "0px"; ghost.style.left = "130px";
+            await wait(600);
+            ghost.style.top = "260px"; ghost.style.left = "260px";
+            await wait(600);
 
-const dz=document.getElementById("dropZone");
-const ui=document.getElementById("boxUI");
-const input=document.getElementById("fileInput");
+            // 2. Countdown
+            countEl.style.opacity = "1";
+            for (let i = 3; i >= 0; i--) {
+                countEl.innerText = i;
+                await wait(800);
+            }
+            countEl.style.opacity = "0";
 
-/* CLICK UPLOAD */
-dz.onclick=()=>input.click();
-input.onchange=e=>loadFile(e.target.files[0]);
+            // 3. Split Image
+            const imgUrl = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=300&h=300&fit=crop";
+            gameBox.innerHTML = "";
+            pieces = [];
+            for (let i = 0; i < 9; i++) {
+                const p = document.createElement('div');
+                const pos = `${(i % 3) * 50}% ${Math.floor(i / 3) * 50}%`;
+                p.className = 'puzzle-piece';
+                p.style.backgroundImage = `url('${imgUrl}')`;
+                p.style.backgroundPosition = pos;
+                p.dataset.correct = pos;
+                gameBox.appendChild(p);
+                pieces.push(p);
+            }
 
-/* DRAG EVENTS */
-dz.addEventListener("dragover",e=>{
-    e.preventDefault();dz.classList.add("drag");
-});
-dz.addEventListener("dragleave",()=>dz.classList.remove("drag"));
+            // 4. Intentional Scramble
+            await wait(500);
+            for(let i=0; i<15; i++) {
+                shuffleStep();
+                await wait(150);
+            }
 
-dz.addEventListener("drop",e=>{
-    e.preventDefault();dz.classList.remove("drag");
+            // 5. Intentional Solve (15 moves)
+            await wait(1000);
+            for(let i=0; i<15; i++) {
+                // Move ghost to a random piece to simulate "clicking"
+                const target = pieces[Math.floor(Math.random()*9)];
+                ghost.style.top = target.offsetTop + "px";
+                ghost.style.left = target.offsetLeft + "px";
+                
+                // On the last move, we force the solution
+                if (i === 14) {
+                    pieces.forEach(p => p.style.backgroundPosition = p.dataset.correct);
+                } else {
+                    shuffleStep();
+                }
+                await wait(400);
+            }
 
-    if(e.dataTransfer.files.length){
-        loadFile(e.dataTransfer.files[0]);
-        return;
-    }
+            // 6. Party Time
+            launchLocalConfetti();
+        }
 
-    const url=e.dataTransfer.getData("text/uri-list");
-    if(url) loadFromURL(url);
-});
+        function shuffleStep() {
+            const i1 = Math.floor(Math.random() * 9);
+            const i2 = Math.floor(Math.random() * 9);
+            const temp = pieces[i1].style.backgroundPosition;
+            pieces[i1].style.backgroundPosition = pieces[i2].style.backgroundPosition;
+            pieces[i2].style.backgroundPosition = temp;
+        }
 
-/* LOADERS */
-function loadFile(file){
-    const r=new FileReader();
-    r.onload=e=>useImage(e.target.result);
-    r.readAsDataURL(file);
-}
+        function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
 
-function loadFromURL(url){
-    const img=new Image();
-    img.crossOrigin="anonymous";
-    img.onload=()=>{
-        const c=document.createElement("canvas");
-        c.width=img.width;
-        c.height=img.height;
-        c.getContext("2d").drawImage(img,0,0);
-        useImage(c.toDataURL("image/png"));
-    };
-    img.src=url;
-}
-
-/* GAME */
-function useImage(data){
-    currentImg=data;
-    ui.style.backgroundImage=`url(${data})`;
-    ui.innerHTML="";
-    createPieces(data);
-}
-
-function createPieces(img){
-    dz.querySelectorAll(".piece").forEach(p=>p.remove());
-    solution=[];
-    for(let i=0;i<9;i++){
-        const p=document.createElement("div");
-        p.className="piece";
-        const pos=`${(i%3)*50}% ${Math.floor(i/3)*50}%`;
-        solution.push(pos);
-        p.style.backgroundImage=`url(${img})`;
-        p.style.backgroundPosition=pos;
-        p.draggable=true;
-
-        p.ondragstart=e=>e.dataTransfer.setData("i",i);
-        p.ondragover=e=>e.preventDefault();
-        p.ondrop=e=>{
-            e.preventDefault();
-            const j=e.dataTransfer.getData("i");
-            const other=dz.querySelectorAll(".piece")[j];
-            [p.style.backgroundPosition,other.style.backgroundPosition]=
-            [other.style.backgroundPosition,p.style.backgroundPosition];
-            checkWin();
-        };
-        dz.appendChild(p);
-    }
-}
-
-function togglePuzzle(){
-    document.body.classList.toggle("puzzle-mode");
-}
-
-function startGame(){
-    const pos=[...solution].sort(()=>Math.random()-.5);
-    dz.querySelectorAll(".piece").forEach((p,i)=>p.style.backgroundPosition=pos[i]);
-}
-
-function checkWin(){
-    const now=[...dz.querySelectorAll(".piece")].map(p=>p.style.backgroundPosition);
-    if(JSON.stringify(now)===JSON.stringify(solution)){
-        document.body.classList.add("won");
-        document.getElementById("saveBtn").style.display="block";
-    }
-}
-
-function saveTrophy(){
-    const t=document.createElement("div");
-    t.className="mini-trophy-item";
-    t.style.backgroundImage=`url(${currentImg})`;
-    document.getElementById("trophy-shelf").appendChild(t);
-    document.body.classList.add("has-trophies");
-}
-</script>
-
+        function launchLocalConfetti() {
+            for (let i = 0; i < 40; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 300 + 'px';
+                c.style.top = '0px';
+                c.style.backgroundColor = ['#ffcc00', '#0071e3', '#34c759'][Math.floor(Math.random() * 3)];
+                gameBox.appendChild(c);
+                setTimeout(() => c.remove(), 2000);
+            }
+        }
+    </script>
 </body>
 </html>
