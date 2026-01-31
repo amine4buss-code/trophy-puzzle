@@ -1,299 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trophy Collector Pro</title>
-    <style>
-        :root {
-            --bg-color: #f5f5f7;
-            --spider-color: #d2d2d7;
-            --success-color: #34c759;
-            --play-bg: #1d1d1f;
-            --play-spider: #5856d6;
-            --win-bg: #fff9e6;
-            --win-spider: #ffcc00;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trophy Collector Pro</title>
 
-        body {
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            height: 100vh; margin: 0; font-family: -apple-system, sans-serif;
-            background-color: var(--bg-color); transition: background 1s ease; overflow: hidden;
-            perspective: 1200px;
-        }
+<style>
+:root {
+    --bg:#f5f5f7;
+    --dark:#1d1d1f;
+    --accent:#0071e3;
+    --win:#ffcc00;
+}
+body{
+    margin:0;height:100vh;display:flex;justify-content:center;align-items:center;
+    font-family:-apple-system,sans-serif;background:var(--bg);overflow:hidden;
+}
+body.playing{background:#111;}
+body.won{background:#fff9e6;}
 
-        body.playing { background-color: var(--play-bg); }
-        body.won { background-color: var(--win-bg); }
+#trophy-shelf{
+    position:fixed;top:0;width:100%;height:80px;
+    display:flex;gap:20px;align-items:center;padding:0 20px;
+    background:white;border-bottom:3px solid var(--win);
+    transform:translateY(-100%);transition:.5s;z-index:99;
+}
+body.has-trophies #trophy-shelf{transform:translateY(0);}
+.mini-trophy-item{
+    width:45px;height:45px;border-radius:8px;
+    border:2px solid gold;background-size:cover;
+    box-shadow:0 0 15px gold;
+}
 
-        /* Hall of Fame Shelf */
-        #trophy-shelf {
-            position: absolute; top: 0; width: 100%; height: 80px;
-            background: rgba(255, 255, 255, 0.98);
-            border-bottom: 3px solid var(--win-spider);
-            display: flex; justify-content: flex-start; align-items: center;
-            padding: 0 20px; gap: 25px;
-            z-index: 100; transform: translateY(-110%);
-            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            overflow-x: auto;
-        }
-        body.has-trophies #trophy-shelf { transform: translateY(0); }
+.main-container{
+    display:flex;flex-direction:column;gap:20px;align-items:center;
+}
 
-        .shelf-title {
-            position: absolute; right: 20px; font-weight: 800; 
-            color: #1d1d1f; letter-spacing: 2px; opacity: 0.2; pointer-events: none;
-        }
+.upload-box{
+    width:300px;height:300px;border-radius:24px;
+    background:white;display:flex;justify-content:center;align-items:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.1);
+    cursor:pointer;position:relative;
+    transition:.3s;
+}
+.upload-box.dragover{
+    outline:4px dashed var(--accent);
+    transform:scale(1.03);
+}
+.box-ui{
+    text-align:center;color:#888;
+    background-size:cover;background-position:center;
+    width:100%;height:100%;display:flex;
+    flex-direction:column;justify-content:center;align-items:center;
+    border-radius:24px;
+}
 
-        /* Static Square Trophy Styling */
-        .mini-trophy-item {
-            width: 45px; height: 45px; flex-shrink: 0;
-            border-radius: 8px; border: 2px solid gold;
-            background-size: cover; background-position: center;
-            position: relative;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.7); /* The Shiny Light */
-        }
+.puzzle-piece{
+    width:100px;height:100px;float:left;
+    background-size:300px 300px;
+    display:none;
+}
+body.puzzle-mode .puzzle-piece{display:block;}
+body.puzzle-mode .box-ui{display:none;}
 
-        /* Main Game Elements */
-        .star-container {
-            position: absolute; width: 200vw; height: 200vw;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 0; animation: slowSpin 60s linear infinite;
-        }
-        .star-line {
-            position: absolute; width: 100%; height: 1px;
-            background: var(--spider-color); transition: all 1s ease; opacity: 0.3;
-        }
-        body.playing .star-line { background: var(--play-spider); opacity: 0.6; box-shadow: 0 0 15px var(--play-spider); }
-        body.won .star-line { background: var(--win-spider); opacity: 0.8; box-shadow: 0 0 25px var(--win-spider); height: 2px; }
-        @keyframes slowSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.apple-btn{
+    padding:12px 28px;border:none;border-radius:999px;
+    font-weight:600;cursor:pointer;
+    background:var(--accent);color:white;
+}
+#save-btn{
+    display:none;background:var(--win);
+}
 
-        .main-container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-        
-        .cube-container {
-            width: 306px; height: 306px;
-            display: none; justify-content: center; align-items: center;
-            z-index: 20;
-        }
-        body.won .cube-container { display: flex; }
-
-        .cube {
-            width: 150px; height: 150px; transform-style: preserve-3d;
-            animation: cubeRotate 12s linear infinite;
-        }
-        @keyframes cubeRotate {
-            from { transform: rotateX(0deg) rotateY(0deg); }
-            to { transform: rotateX(360deg) rotateY(360deg); }
-        }
-        .face {
-            position: absolute; width: 100%; height: 100%;
-            background: white; border: 2px solid var(--win-spider);
-            background-size: cover; background-position: center; background-repeat: no-repeat;
-        }
-        .front { transform: rotateY(0deg) translateZ(75px); }
-        .back  { transform: rotateY(180deg) translateZ(75px); }
-        .right { transform: rotateY(90deg) translateZ(75px); }
-        .left  { transform: rotateY(-90deg) translateZ(75px); }
-        .top, .bottom { transform: rotateX(90deg) translateZ(75px); background: #fff; }
-
-        .upload-box {
-            width: 306px; height: 306px; background-color: white; border-radius: 24px;
-            display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-            overflow: hidden; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        body.won .upload-box { display: none; }
-        .box-content { 
-            grid-column: 1 / span 3; grid-row: 1 / span 3; 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            color: #86868b; background-size: cover; background-repeat: no-repeat; background-position: center;
-        }
-        .puzzle-piece { 
-            display: none; background-size: 300px 300px; background-repeat: no-repeat; 
-            border: 1px solid rgba(255,255,255,0.1); box-sizing: border-box;
-        }
-        body.puzzle-mode .puzzle-piece { display: block; }
-        body.puzzle-mode .box-content { display: none; }
-
-        .btn-group { display: flex; gap: 15px; }
-        .apple-btn { display: none; padding: 12px 28px; background: white; border: none; border-radius: 980px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: 0.3s; }
-        body.uploaded:not(.playing):not(.won) .apple-btn { display: block; }
-
-        #play-btn { background: #0071e3; color: white; opacity: 0.5; pointer-events: none; }
-        body.puzzle-mode #play-btn { opacity: 1; pointer-events: auto; }
-
-        #save-trophy-btn {
-            display: none; padding: 16px 32px; background: var(--win-spider); color: white;
-            border: none; border-radius: 14px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 10px 20px rgba(255, 204, 0, 0.4);
-        }
-
-        #replay-msg {
-            display: none; margin-top: 15px; font-weight: 600; color: #86868b; text-align: center; max-width: 280px; font-size: 14px;
-        }
-        body.can-replay:not(.uploaded) #replay-msg { display: block; }
-
-        .confetti { position: absolute; width: 10px; height: 10px; z-index: 30; pointer-events: none; animation: fall 3s ease-out forwards; }
-        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
-        #file-input { display: none; }
-    </style>
+#file-input{display:none;}
+</style>
 </head>
+
 <body>
 
-    <div id="trophy-shelf">
-        <div class="shelf-title">HALL OF FAME</div>
+<div id="trophy-shelf"></div>
+
+<div class="main-container">
+    <div class="upload-box" id="drop-zone">
+        <div class="box-ui" id="box-ui">
+            <div style="font-size:48px">＋</div>
+            <div>drop or click image</div>
+        </div>
     </div>
 
-    <div class="star-container" id="star-bg"></div>
+    <button class="apple-btn" onclick="togglePuzzle()">Split Image</button>
+    <button class="apple-btn" onclick="startGame()">Play</button>
+    <button id="save-btn" class="apple-btn" onclick="saveTrophy()">Save Trophy</button>
+</div>
 
-    <div class="main-container">
-        <div class="cube-container">
-            <div class="cube" id="trophy-cube">
-                <div class="face front"></div>
-                <div class="face back"></div>
-                <div class="face right"></div>
-                <div class="face left"></div>
-                <div class="face top">WINNER</div>
-                <div class="face bottom">WINNER</div>
-            </div>
-        </div>
+<input type="file" id="file-input" accept="image/*">
 
-        <div class="upload-box" id="drop-zone" onclick="triggerUpload()">
-            <div class="box-content" id="box-ui">
-                <div style="font-size: 50px;">+</div>
-                <div>upload image</div>
-            </div>
-        </div>
+<script>
+let solution=[],currentImg="",isPlaying=false;
 
-        <div id="replay-msg">Hey, do you want to play more and save more trophies? Let's go!</div>
+const dz=document.getElementById("drop-zone");
+const fileInput=document.getElementById("file-input");
 
-        <div class="btn-group">
-            <button id="split-btn" class="apple-btn" onclick="togglePuzzle(event)">Split Image</button>
-            <button id="play-btn" class="apple-btn" onclick="startGame()">Let's Play</button>
-        </div>
+dz.onclick=()=>fileInput.click();
 
-        <button id="save-trophy-btn" onclick="saveToShelf()">SAVE THIS TROPHY</button>
-    </div>
+fileInput.onchange=e=>{
+    if(e.target.files[0]) loadFile(e.target.files[0]);
+};
 
-    <input type="file" id="file-input" accept="image/*" onchange="handleFile(this)">
+dz.addEventListener("dragover",e=>{
+    e.preventDefault();dz.classList.add("dragover");
+});
+dz.addEventListener("dragleave",()=>dz.classList.remove("dragover"));
 
-    <script>
-        let solution = [];
-        let isGameActive = false;
-        let currentImg = "";
+dz.addEventListener("drop",e=>{
+    e.preventDefault();dz.classList.remove("dragover");
 
-        for (let i = 0; i < 24; i++) {
-            const line = document.createElement('div');
-            line.className = 'star-line';
-            line.style.transform = `rotate(${i * 15}deg)`;
-            document.getElementById('star-bg').appendChild(line);
-        }
+    if(e.dataTransfer.files.length){
+        loadFile(e.dataTransfer.files[0]);
+    } else {
+        const html=e.dataTransfer.getData("text/html");
+        const src=html.match(/src\s*=\s*"(.+?)"/);
+        if(src) loadImageFromURL(src[1]);
+    }
+});
 
-        function triggerUpload() {
-            if(!isGameActive && !document.body.classList.contains('won')) {
-                document.getElementById('file-input').click();
-            }
-        }
+function loadFile(file){
+    const reader=new FileReader();
+    reader.onload=e=>useImage(e.target.result);
+    reader.readAsDataURL(file);
+}
 
-        function handleFile(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentImg = e.target.result;
-                    document.getElementById('box-ui').style.backgroundImage = `url('${currentImg}')`;
-                    document.getElementById('box-ui').innerHTML = "";
-                    document.body.classList.remove('puzzle-mode', 'playing', 'won');
-                    document.body.classList.add('uploaded');
-                    document.querySelectorAll('.face').forEach((f, i) => { 
-                        if(i < 4) f.style.backgroundImage = `url('${currentImg}')`; 
-                    });
-                    createPieces(currentImg);
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
+function loadImageFromURL(url){
+    fetch(url)
+        .then(r=>r.blob())
+        .then(b=>loadFile(b));
+}
 
-        function createPieces(img) {
-            const dz = document.getElementById('drop-zone');
-            dz.querySelectorAll('.puzzle-piece').forEach(p => p.remove());
-            solution = [];
-            for (let i = 0; i < 9; i++) {
-                const p = document.createElement('div');
-                const pos = `${(i % 3) * 50}% ${Math.floor(i / 3) * 50}%`;
-                solution.push(pos);
-                p.className = 'puzzle-piece';
-                p.id = `piece-${Date.now()}-${i}`;
-                p.style.backgroundImage = `url('${img}')`;
-                p.style.backgroundPosition = pos;
-                p.addEventListener('dragstart', e => {
-                    if(!isGameActive) return e.preventDefault();
-                    e.dataTransfer.setData('text/plain', e.target.id);
-                });
-                p.addEventListener('dragover', e => e.preventDefault());
-                p.addEventListener('drop', handleDrop);
-                dz.appendChild(p);
-            }
-        }
+function useImage(img){
+    currentImg=img;
+    const ui=document.getElementById("box-ui");
+    ui.style.backgroundImage=`url('${img}')`;
+    ui.innerHTML="";
+    createPieces(img);
+}
 
-        function handleDrop(e) {
+function createPieces(img){
+    dz.querySelectorAll(".puzzle-piece").forEach(p=>p.remove());
+    solution=[];
+    for(let i=0;i<9;i++){
+        const p=document.createElement("div");
+        p.className="puzzle-piece";
+        const pos=`${(i%3)*50}% ${Math.floor(i/3)*50}%`;
+        solution.push(pos);
+        p.style.backgroundImage=`url('${img}')`;
+        p.style.backgroundPosition=pos;
+        p.draggable=true;
+        p.ondragstart=e=>e.dataTransfer.setData("id",i);
+        p.ondrop=e=>{
             e.preventDefault();
-            const draggedId = e.dataTransfer.getData('text/plain');
-            const draggedEl = document.getElementById(draggedId);
-            if (e.target.classList.contains('puzzle-piece') && draggedEl !== e.target) {
-                const tempPos = draggedEl.style.backgroundPosition;
-                draggedEl.style.backgroundPosition = e.target.style.backgroundPosition;
-                e.target.style.backgroundPosition = tempPos;
-                checkWin();
-            }
-        }
+            const j=e.dataTransfer.getData("id");
+            const other=dz.querySelectorAll(".puzzle-piece")[j];
+            [p.style.backgroundPosition,other.style.backgroundPosition]=
+            [other.style.backgroundPosition,p.style.backgroundPosition];
+            checkWin();
+        };
+        p.ondragover=e=>e.preventDefault();
+        dz.appendChild(p);
+    }
+}
 
-        function startGame() {
-            isGameActive = true;
-            document.body.classList.add('playing');
-            const pieces = document.querySelectorAll('.puzzle-piece');
-            pieces.forEach(p => p.setAttribute('draggable', 'true'));
-            let positions = [...solution].sort(() => Math.random() - 0.5);
-            pieces.forEach((p, i) => p.style.backgroundPosition = positions[i]);
-        }
+function togglePuzzle(){
+    document.body.classList.toggle("puzzle-mode");
+}
 
-        function togglePuzzle(e) { e.stopPropagation(); document.body.classList.toggle('puzzle-mode'); }
+function startGame(){
+    document.body.classList.add("playing");
+    const pos=[...solution].sort(()=>Math.random()-.5);
+    dz.querySelectorAll(".puzzle-piece").forEach((p,i)=>p.style.backgroundPosition=pos[i]);
+}
 
-        function checkWin() {
-            const current = Array.from(document.querySelectorAll('.puzzle-piece')).map(p => p.style.backgroundPosition);
-            if (JSON.stringify(current) === JSON.stringify(solution)) {
-                isGameActive = false;
-                document.body.classList.add('won');
-                launchConfetti();
-                setTimeout(() => { document.getElementById('save-trophy-btn').style.display = 'block'; }, 7000);
-            }
-        }
+function checkWin(){
+    const now=[...dz.querySelectorAll(".puzzle-piece")].map(p=>p.style.backgroundPosition);
+    if(JSON.stringify(now)===JSON.stringify(solution)){
+        document.body.classList.add("won");
+        document.getElementById("save-btn").style.display="block";
+    }
+}
 
-        function saveToShelf() {
-            document.body.classList.add('has-trophies');
-            const shelf = document.getElementById('trophy-shelf');
-            
-            // Create the new flat square trophy
-            const trophy = document.createElement('div');
-            trophy.className = 'mini-trophy-item';
-            trophy.style.backgroundImage = `url('${currentImg}')`;
-            shelf.appendChild(trophy);
+function saveTrophy(){
+    const t=document.createElement("div");
+    t.className="mini-trophy-item";
+    t.style.backgroundImage=`url('${currentImg}')`;
+    document.getElementById("trophy-shelf").appendChild(t);
+    document.body.classList.add("has-trophies");
+}
+</script>
 
-            // Full Reset
-            document.body.classList.remove('won', 'uploaded', 'playing', 'puzzle-mode');
-            document.body.classList.add('can-replay');
-            document.getElementById('save-trophy-btn').style.display = 'none';
-            document.getElementById('box-ui').style.backgroundImage = 'none';
-            document.getElementById('box-ui').innerHTML = '<div style="font-size: 50px;">+</div><div>upload image</div>';
-        }
-
-        function launchConfetti() {
-            for (let i = 0; i < 80; i++) {
-                const c = document.createElement('div');
-                c.className = 'confetti';
-                c.style.left = Math.random() * 100 + 'vw';
-                c.style.backgroundColor = ['#ffcc00', '#34c759', '#0071e3'][Math.floor(Math.random() * 3)];
-                document.body.appendChild(c);
-                setTimeout(() => c.remove(), 3000);
-            }
-        }
-    </script>
 </body>
 </html>
+
