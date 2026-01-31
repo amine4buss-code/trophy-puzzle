@@ -6,24 +6,23 @@
 <title>Trophy Collector Pro</title>
 
 <style>
-:root {
+:root{
     --bg:#f5f5f7;
-    --dark:#1d1d1f;
     --accent:#0071e3;
     --win:#ffcc00;
 }
 body{
     margin:0;height:100vh;display:flex;justify-content:center;align-items:center;
-    font-family:-apple-system,sans-serif;background:var(--bg);overflow:hidden;
+    font-family:-apple-system,sans-serif;background:var(--bg);
 }
-body.playing{background:#111;}
+body.puzzle-mode{background:#111;}
 body.won{background:#fff9e6;}
 
 #trophy-shelf{
     position:fixed;top:0;width:100%;height:80px;
     display:flex;gap:20px;align-items:center;padding:0 20px;
     background:white;border-bottom:3px solid var(--win);
-    transform:translateY(-100%);transition:.5s;z-index:99;
+    transform:translateY(-100%);transition:.4s;z-index:10;
 }
 body.has-trophies #trophy-shelf{transform:translateY(0);}
 .mini-trophy-item{
@@ -32,47 +31,43 @@ body.has-trophies #trophy-shelf{transform:translateY(0);}
     box-shadow:0 0 15px gold;
 }
 
-.main-container{
+.main{
     display:flex;flex-direction:column;gap:20px;align-items:center;
 }
 
 .upload-box{
     width:300px;height:300px;border-radius:24px;
-    background:white;display:flex;justify-content:center;align-items:center;
+    background:white;display:flex;align-items:center;justify-content:center;
     box-shadow:0 10px 30px rgba(0,0,0,.1);
-    cursor:pointer;position:relative;
-    transition:.3s;
+    cursor:pointer;transition:.3s;position:relative;
 }
-.upload-box.dragover{
+.upload-box.drag{
     outline:4px dashed var(--accent);
-    transform:scale(1.03);
+    transform:scale(1.04);
 }
 .box-ui{
-    text-align:center;color:#888;
+    width:100%;height:100%;border-radius:24px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
     background-size:cover;background-position:center;
-    width:100%;height:100%;display:flex;
-    flex-direction:column;justify-content:center;align-items:center;
-    border-radius:24px;
+    color:#888;font-weight:600;
 }
 
-.puzzle-piece{
-    width:100px;height:100px;float:left;
-    background-size:300px 300px;
+.piece{
+    width:100px;height:100px;
+    float:left;background-size:300px 300px;
     display:none;
 }
-body.puzzle-mode .puzzle-piece{display:block;}
+body.puzzle-mode .piece{display:block;}
 body.puzzle-mode .box-ui{display:none;}
 
-.apple-btn{
+button{
     padding:12px 28px;border:none;border-radius:999px;
     font-weight:600;cursor:pointer;
     background:var(--accent);color:white;
 }
-#save-btn{
-    display:none;background:var(--win);
-}
+#saveBtn{display:none;background:var(--win);}
 
-#file-input{display:none;}
+input{display:none;}
 </style>
 </head>
 
@@ -80,91 +75,100 @@ body.puzzle-mode .box-ui{display:none;}
 
 <div id="trophy-shelf"></div>
 
-<div class="main-container">
-    <div class="upload-box" id="drop-zone">
-        <div class="box-ui" id="box-ui">
+<div class="main">
+    <div class="upload-box" id="dropZone">
+        <div class="box-ui" id="boxUI">
             <div style="font-size:48px">＋</div>
             <div>drop or click image</div>
         </div>
     </div>
 
-    <button class="apple-btn" onclick="togglePuzzle()">Split Image</button>
-    <button class="apple-btn" onclick="startGame()">Play</button>
-    <button id="save-btn" class="apple-btn" onclick="saveTrophy()">Save Trophy</button>
+    <button onclick="togglePuzzle()">Split Image</button>
+    <button onclick="startGame()">Play</button>
+    <button id="saveBtn" onclick="saveTrophy()">Save Trophy</button>
 </div>
 
-<input type="file" id="file-input" accept="image/*">
+<input type="file" id="fileInput" accept="image/*">
 
 <script>
-let solution=[],currentImg="",isPlaying=false;
+let solution=[],currentImg="";
 
-const dz=document.getElementById("drop-zone");
-const fileInput=document.getElementById("file-input");
+const dz=document.getElementById("dropZone");
+const ui=document.getElementById("boxUI");
+const input=document.getElementById("fileInput");
 
-dz.onclick=()=>fileInput.click();
+/* CLICK UPLOAD */
+dz.onclick=()=>input.click();
+input.onchange=e=>loadFile(e.target.files[0]);
 
-fileInput.onchange=e=>{
-    if(e.target.files[0]) loadFile(e.target.files[0]);
-};
-
+/* DRAG EVENTS */
 dz.addEventListener("dragover",e=>{
-    e.preventDefault();dz.classList.add("dragover");
+    e.preventDefault();dz.classList.add("drag");
 });
-dz.addEventListener("dragleave",()=>dz.classList.remove("dragover"));
+dz.addEventListener("dragleave",()=>dz.classList.remove("drag"));
 
 dz.addEventListener("drop",e=>{
-    e.preventDefault();dz.classList.remove("dragover");
+    e.preventDefault();dz.classList.remove("drag");
 
     if(e.dataTransfer.files.length){
         loadFile(e.dataTransfer.files[0]);
-    } else {
-        const html=e.dataTransfer.getData("text/html");
-        const src=html.match(/src\s*=\s*"(.+?)"/);
-        if(src) loadImageFromURL(src[1]);
+        return;
     }
+
+    const url=e.dataTransfer.getData("text/uri-list");
+    if(url) loadFromURL(url);
 });
 
+/* LOADERS */
 function loadFile(file){
-    const reader=new FileReader();
-    reader.onload=e=>useImage(e.target.result);
-    reader.readAsDataURL(file);
+    const r=new FileReader();
+    r.onload=e=>useImage(e.target.result);
+    r.readAsDataURL(file);
 }
 
-function loadImageFromURL(url){
-    fetch(url)
-        .then(r=>r.blob())
-        .then(b=>loadFile(b));
+function loadFromURL(url){
+    const img=new Image();
+    img.crossOrigin="anonymous";
+    img.onload=()=>{
+        const c=document.createElement("canvas");
+        c.width=img.width;
+        c.height=img.height;
+        c.getContext("2d").drawImage(img,0,0);
+        useImage(c.toDataURL("image/png"));
+    };
+    img.src=url;
 }
 
-function useImage(img){
-    currentImg=img;
-    const ui=document.getElementById("box-ui");
-    ui.style.backgroundImage=`url('${img}')`;
+/* GAME */
+function useImage(data){
+    currentImg=data;
+    ui.style.backgroundImage=`url(${data})`;
     ui.innerHTML="";
-    createPieces(img);
+    createPieces(data);
 }
 
 function createPieces(img){
-    dz.querySelectorAll(".puzzle-piece").forEach(p=>p.remove());
+    dz.querySelectorAll(".piece").forEach(p=>p.remove());
     solution=[];
     for(let i=0;i<9;i++){
         const p=document.createElement("div");
-        p.className="puzzle-piece";
+        p.className="piece";
         const pos=`${(i%3)*50}% ${Math.floor(i/3)*50}%`;
         solution.push(pos);
-        p.style.backgroundImage=`url('${img}')`;
+        p.style.backgroundImage=`url(${img})`;
         p.style.backgroundPosition=pos;
         p.draggable=true;
-        p.ondragstart=e=>e.dataTransfer.setData("id",i);
+
+        p.ondragstart=e=>e.dataTransfer.setData("i",i);
+        p.ondragover=e=>e.preventDefault();
         p.ondrop=e=>{
             e.preventDefault();
-            const j=e.dataTransfer.getData("id");
-            const other=dz.querySelectorAll(".puzzle-piece")[j];
+            const j=e.dataTransfer.getData("i");
+            const other=dz.querySelectorAll(".piece")[j];
             [p.style.backgroundPosition,other.style.backgroundPosition]=
             [other.style.backgroundPosition,p.style.backgroundPosition];
             checkWin();
         };
-        p.ondragover=e=>e.preventDefault();
         dz.appendChild(p);
     }
 }
@@ -174,23 +178,22 @@ function togglePuzzle(){
 }
 
 function startGame(){
-    document.body.classList.add("playing");
     const pos=[...solution].sort(()=>Math.random()-.5);
-    dz.querySelectorAll(".puzzle-piece").forEach((p,i)=>p.style.backgroundPosition=pos[i]);
+    dz.querySelectorAll(".piece").forEach((p,i)=>p.style.backgroundPosition=pos[i]);
 }
 
 function checkWin(){
-    const now=[...dz.querySelectorAll(".puzzle-piece")].map(p=>p.style.backgroundPosition);
+    const now=[...dz.querySelectorAll(".piece")].map(p=>p.style.backgroundPosition);
     if(JSON.stringify(now)===JSON.stringify(solution)){
         document.body.classList.add("won");
-        document.getElementById("save-btn").style.display="block";
+        document.getElementById("saveBtn").style.display="block";
     }
 }
 
 function saveTrophy(){
     const t=document.createElement("div");
     t.className="mini-trophy-item";
-    t.style.backgroundImage=`url('${currentImg}')`;
+    t.style.backgroundImage=`url(${currentImg})`;
     document.getElementById("trophy-shelf").appendChild(t);
     document.body.classList.add("has-trophies");
 }
@@ -198,4 +201,3 @@ function saveTrophy(){
 
 </body>
 </html>
-
